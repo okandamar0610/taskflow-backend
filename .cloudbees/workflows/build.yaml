@@ -1,0 +1,40 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: build
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      artifact-id:
+        value: ${{ jobs.build.outputs.artifact-id }}
+      version:
+        value: ${{ jobs.build.outputs.version }}
+
+jobs:
+  build:
+    outputs:
+      artifact-id: backend-artifact-${{ cloudbees.version }}
+      version: ${{ cloudbees.version }}
+    steps:
+      - name: Check out
+        uses: cloudbees-io/checkout@v2
+
+      - name: Install dependencies and run tests
+        uses: docker://python:3.11-slim
+        run: |
+          pip install -r requirements.txt
+          pytest -v
+
+      - name: Register build artifact
+        uses: cloudbees-io/register-build-artifacts@main
+        with:
+          artifact-metadata: |
+            [
+              {
+                "name": "docker.io/mock/backend",
+                "version": "${{ cloudbees.version }}",
+                "url": "docker.io/mock/backend:${{ cloudbees.version }}",
+                "type": "docker"
+              }
+            ]
